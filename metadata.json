@@ -1,0 +1,8 @@
+{
+  "name": "Guida Basal-Bolus Ospedaliera",
+  "description": "Sistema di supporto decisionale clinico per la gestione del diabete nel paziente ricoverato: calcolo schema Basal-Bolus, gestione farmaci domiciliari da sospendere, fattore di sensibilità e scale di correzione glicemica.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
