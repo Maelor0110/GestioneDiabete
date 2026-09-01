@@ -127,12 +127,8 @@ export default function App() {
                 Gestione & Prescrizione Insulinica Ospedaliera
               </h1>
 
-              {/* Doctor Subtitle */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-base sm:text-xl font-extrabold text-teal-400">
-                  Creato dal Dott. Maestri Lorenzo
-                </span>
-                <span className="hidden sm:inline text-slate-500">•</span>
+              {/* Subtitle */}
+              <div className="pt-1">
                 <span className="text-xs sm:text-sm text-slate-300 font-medium">
                   Supporto Decisionale Basal-Bolus, Nutrizione Clinica & Riconciliazione Farmacologica
                 </span>
