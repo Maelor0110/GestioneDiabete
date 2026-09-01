@@ -352,7 +352,7 @@ export default function App() {
             <div>
               <span className="font-bold text-slate-200">GlucoHospital</span> • Gestione & Prescrizione Insulinica Ospedaliera
               <div className="text-[11px] text-teal-300 font-medium mt-0.5">
-                Creato dal Dott. Maestri Lorenzo • Algoritmi conformi alle Linee Guida ADA, SID-AMD ed ESPEN.
+                Algoritmi conformi alle Linee Guida ADA, SID-AMD ed ESPEN.
               </div>
             </div>
 
@@ -373,8 +373,8 @@ export default function App() {
                 onClick={() => setShowPrintModal(true)}
                 className="hover:text-teal-400 transition-colors cursor-pointer flex items-center gap-1"
               >
-                <Printer className="h-3 w-3 text-teal-400" />
-                Stampa Scheda PDF / Word
+                <FileDown className="h-3.5 w-3.5 text-teal-400" />
+                Esporta Word / Copia
               </button>
             </div>
           </div>
@@ -384,7 +384,7 @@ export default function App() {
             <span className="font-bold text-slate-300 uppercase tracking-wider block mb-1">
               ⚠️ Clausola di Esonero di Responsabilità & Avvertenza Medico-Legale (Disclaimer):
             </span>
-            La presente applicazione costituisce esclusivamente uno strumento informatico di supporto decisionale e orientamento orientato alle linee guida scientifiche (ADA / SID-AMD / ESPEN). Non costituisce né sostituisce in alcun modo la valutazione clinica autonoma, la diagnosi, la prescrizione o la responsabilità professionale del medico curante o del personale sanitario. Il medico prescrittore rimane l'unico ed esclusivo responsabile della verifica dell'appropriatezza dei dosaggi, delle indicazioni, delle controindicazioni, del monitoraggio e dell'adattamento dello schema terapeutico alle specifiche condizioni cliniche individuali di ciascun paziente. L'autore (Dott. Maestri Lorenzo) declina ogni responsabilità diretta o indiretta per eventuali errori, omissioni, reazioni avverse, ipo/iperglicemie o esiti clinici sfavorevoli derivanti dall'utilizzo o dall'interpretazione dei calcoli generati da questo software.
+            La presente applicazione costituisce esclusivamente uno strumento informatico di supporto decisionale e orientamento orientato alle linee guida scientifiche (ADA / SID-AMD / ESPEN). Non costituisce né sostituisce in alcun modo la valutazione clinica autonoma, la diagnosi, la prescrizione o la responsabilità professionale del medico curante o del personale sanitario. Il medico prescrittore rimane l'unico ed esclusivo responsabile della verifica dell'appropriatezza dei dosaggi, delle indicazioni, delle controindicazioni, del monitoraggio e dell'adattamento dello schema terapeutico alle specifiche condizioni cliniche individuali di ciascun paziente. Si declina ogni responsabilità diretta o indiretta per eventuali errori, omissioni, reazioni avverse, ipo/iperglicemie o esiti clinici sfavorevoli derivanti dall'utilizzo o dall'interpretazione dei calcoli generati da questo software.
           </div>
         </div>
       </footer>
