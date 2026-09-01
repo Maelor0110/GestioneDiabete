@@ -11,39 +11,68 @@
 }
 
 @media print {
-  /* Hide all UI elements except the printable order sheet */
-  body {
+  /* Impostazioni pagina standard A4 */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
   }
 
-  header, footer, nav, .no-print, button, #patient-form-section, #regimen-results-section {
+  /* Nasconde tutti gli elementi di navigazione ed interfaccia */
+  header, footer, nav, .no-print, button, #patient-form-section, #regimen-results-section, .backdrop-blur-xs {
     display: none !important;
   }
 
+  /* Sblocca il contenitore modale e la finestra a schermo intero durante la stampa */
+  .fixed {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    display: block !important;
+  }
+
+  .max-h-\[94vh\] {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Il documento vero e proprio che deve fluire su più pagine */
   #printable-order-sheet {
     display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
     width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
     margin: 0 !important;
-    padding: 20px !important;
+    padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
     background: #ffffff !important;
   }
 
-  .fixed {
-    position: static !important;
-    background: transparent !important;
-  }
-
-  /* Page break rules */
-  .page-break-inside-avoid {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  /* Impedisce il taglio a metà delle tabelle e dei riquadri critici */
+  .page-break-inside-avoid,
+  .print-avoid-break,
+  tr,
+  table,
+  .grid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }

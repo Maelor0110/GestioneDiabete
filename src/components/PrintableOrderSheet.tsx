@@ -8,9 +8,7 @@ import {
   Check, 
   X, 
   FileText, 
-  ShieldAlert, 
-  FileDown,
-  AlertTriangle
+  FileDown
 } from 'lucide-react';
 
 interface PrintableOrderSheetProps {
@@ -86,45 +84,57 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
     window.print();
   };
 
+  // Generazione Word pulita, semplificata ed essenziale
   const handleExportWord = () => {
-    const tableRowsHtml = correctionScale.map((step) => {
-      const isHypo = step.minGlucose === 0;
-      const isHigh = step.minGlucose > 320;
-      const isEga = step.minGlucose > 400;
-      const bgCol = isEga ? '#ffebee' : isHigh ? '#fff8e1' : isHypo ? '#fce4ec' : '#ffffff';
-      const textColor = isEga ? '#b71c1c' : isHypo ? '#880e4f' : '#212121';
+    const scheduledDosesRowsHtml = regimen.scheduledDoses.map((d) => {
+      const isBasal = d.label.toLowerCase().includes('basale');
+      const bg = isBasal ? '#f0f9ff' : '#ffffff';
+
       return `
-        <tr style="background-color: ${bgCol};">
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; font-weight: bold; font-family: monospace; color: ${textColor}; font-size: 13px;">${step.glucoseRange}</td>
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; font-weight: bold; text-align: center; color: ${textColor}; font-size: 13px;">
-            ${isHypo ? '0 U (SOSPENDI)' : `+${step.extraUnits} U`}
-          </td>
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; font-size: 12px; color: #333333;">${step.actionNote}</td>
+        <tr style="background-color: ${bg};">
+          <td style="padding: 6px 8px; border: 1px solid #999; font-weight: bold; text-align: center;">${d.time}</td>
+          <td style="padding: 6px 8px; border: 1px solid #999; font-weight: bold;">${d.label}</td>
+          <td style="padding: 6px 8px; border: 1px solid #999; text-align: center; font-weight: bold; font-size: 13pt; color: #004d40;">${d.dose} U</td>
+          <td style="padding: 6px 8px; border: 1px solid #999;">${d.drugType} <span style="color: #666; font-size: 9pt;">(${d.route})</span></td>
+          <td style="padding: 6px 8px; border: 1px solid #999; font-size: 9.5pt;">${d.instructions}</td>
         </tr>
       `;
     }).join('');
 
-    const scheduledDosesRowsHtml = regimen.scheduledDoses.map((d) => {
-      const isBasal = d.label.toLowerCase().includes('basale');
-      const isInBag = d.route.includes('sacca');
-      const bg = isBasal ? '#eef2ff' : isInBag ? '#e6fffa' : '#ffffff';
-
+    const correctionRowsHtml = correctionScale.map((step) => {
+      const isHypo = step.minGlucose === 0;
+      const isHigh = step.minGlucose > 320;
+      const bgCol = isHigh ? '#fffbeb' : isHypo ? '#fef2f2' : '#ffffff';
+      const textColor = isHigh ? '#b91c1c' : isHypo ? '#991b1b' : '#111827';
       return `
-        <tr style="background-color: ${bg}; border-bottom: 1px solid #dddddd;">
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; font-weight: bold; font-family: monospace; font-size: 12pt; color: #111827;">${d.time}</td>
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; font-weight: bold; font-size: 10.5pt; color: #004d40;">${d.label}</td>
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; text-align: center; font-weight: bold; font-size: 14pt; color: #0f766e;">${d.dose} U</td>
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; font-size: 10pt; color: #374151;">${d.drugType} <br><span style="color: #6b7280; font-size: 9pt;">[Via: ${d.route}]</span></td>
-          <td style="padding: 8px 10px; border: 1px solid #cccccc; font-size: 9.5pt; color: #4b5563;">${d.instructions}</td>
+        <tr style="background-color: ${bgCol};">
+          <td style="padding: 5px 8px; border: 1px solid #999; font-weight: bold; text-align: center; color: ${textColor};">${step.glucoseRange}</td>
+          <td style="padding: 5px 8px; border: 1px solid #999; font-weight: bold; text-align: center; font-size: 11pt; color: ${textColor};">
+            ${isHypo ? '0 U (SOSPENDI)' : `+${step.extraUnits} U`}
+          </td>
+          <td style="padding: 5px 8px; border: 1px solid #999; font-size: 9pt; color: #374151;">${step.actionNote}</td>
         </tr>
       `;
     }).join('');
 
     const suspendedMedsHtml = suspendedMeds.length > 0
-      ? `<ul style="margin: 5px 0 10px 20px; font-size: 12px; color: #212121;">
-          ${suspendedMeds.map(m => `<li style="margin-bottom: 6px;"><strong>${m.name} (${m.commercialExamples}):</strong> <span style="color: #c62828; font-weight: bold;">SOSPESA</span> - ${m.clinicalRationale}</li>`).join('')}
-        </ul>`
-      : `<p style="font-size: 12px; color: #555555; font-style: italic;">Nessun farmaco orale da sospendere indicato.</p>`;
+      ? `<table style="width: 100%; border-collapse: collapse; margin-top: 4px;">
+          <tr style="background-color: #fee2e2;">
+            <th style="border: 1px solid #999; padding: 5px 8px; text-align: left; font-size: 9.5pt; width: 35%;">Farmaco Domiciliare</th>
+            <th style="border: 1px solid #999; padding: 5px 8px; text-align: left; font-size: 9.5pt; width: 65%;">Motivazione Clinica Sospensione</th>
+          </tr>
+          ${suspendedMeds.map(m => `
+            <tr>
+              <td style="border: 1px solid #999; padding: 5px 8px; font-weight: bold; font-size: 9.5pt; color: #991b1b;">
+                ${m.name} (${m.commercialExamples})
+              </td>
+              <td style="border: 1px solid #999; padding: 5px 8px; font-size: 9pt; color: #374151;">
+                ${m.clinicalRationale}
+              </td>
+            </tr>
+          `).join('')}
+        </table>`
+      : `<p style="font-size: 9.5pt; color: #555555; margin: 4px 0;">Nessun farmaco orale da sospendere indicato.</p>`;
 
     const docContent = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -132,64 +142,74 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
         <meta charset="utf-8">
         <title>Prescrizione Schema Insulinico - ${patient.bedOrName || 'Paziente'}</title>
         <style>
-          body { font-family: 'Calibri', 'Arial', sans-serif; color: #1a1a1a; margin: 20px; line-height: 1.4; }
-          h1 { color: #004d40; font-size: 18pt; margin-bottom: 2px; }
-          h2 { color: #004d40; font-size: 13pt; margin-top: 16px; margin-bottom: 6px; border-bottom: 1.5pt solid #004d40; padding-bottom: 3px; }
-          .author { font-size: 11pt; color: #00796b; font-weight: bold; margin-bottom: 8px; }
-          .header-box { background-color: #f5f5f5; border: 1pt solid #dddddd; padding: 10px 14px; margin-bottom: 14px; border-radius: 4px; }
-          .grid-table { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 14px; }
-          .grid-table th { background-color: #004d40; color: #ffffff; padding: 8px 10px; font-size: 10.5pt; text-align: left; border: 1pt solid #004d40; }
-          .protocol-box { background-color: #fffbeb; border: 1.5pt solid #f59e0b; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 10.5pt; color: #92400e; }
-          .signature-section { margin-top: 25px; padding-top: 15px; border-top: 1pt solid #888888; font-size: 11pt; }
+          @page { size: A4 portrait; margin: 1.5cm; }
+          body { font-family: Arial, Calibri, sans-serif; font-size: 10pt; line-height: 1.35; color: #111827; }
+          h1 { color: #004d40; font-size: 15pt; margin: 0 0 2px 0; text-transform: uppercase; }
+          .header-table { width: 100%; border: none; margin-bottom: 10px; border-bottom: 2px solid #004d40; padding-bottom: 6px; }
+          .section-title { font-size: 11pt; font-weight: bold; color: #004d40; background-color: #e0f2f1; padding: 4px 8px; margin-top: 12px; margin-bottom: 6px; border-left: 4px solid #004d40; }
+          table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          table.data-table th { background-color: #f3f4f6; border: 1px solid #999; padding: 5px 8px; font-size: 9.5pt; text-align: left; }
+          table.data-table td { border: 1px solid #999; padding: 5px 8px; font-size: 9.5pt; }
+          .alert-box { background-color: #fffbeb; border: 1px solid #f59e0b; padding: 7px 10px; font-size: 9pt; margin-top: 8px; }
+          .signature-box { margin-top: 18px; width: 100%; }
+          .disclaimer { font-size: 7.5pt; color: #666; margin-top: 12px; border-top: 1px solid #ccc; padding-top: 5px; line-height: 1.2; }
         </style>
       </head>
       <body>
-        <div style="text-align: right; font-size: 10pt; color: #666666;">
-          Presidio Ospedaliero • Scheda Prescrizione Terapeutica Diabetologica<br>
-          Data Prescrizione: <strong>${currentDateFormatted}</strong>
-        </div>
+        
+        <!-- INTESTAZIONE -->
+        <table class="header-table">
+          <tr>
+            <td style="border:none; padding:0;">
+              <h1>SCHEDA PRESCRIZIONE INSULINICA OSPEDALIERA</h1>
+              <div style="font-size: 9pt; color: #00695c; font-weight: bold;">Creato dal Dott. Maestri Lorenzo • Protocolli ADA / SID-AMD / ESPEN</div>
+            </td>
+            <td style="border:none; padding:0; text-align:right; font-size: 9pt; color: #4b5563;">
+              Data: <strong>${currentDateFormatted}</strong><br>
+              Reparto: <strong>${patient.department || 'Degenza'}</strong>
+            </td>
+          </tr>
+        </table>
 
-        <h1>SCHEMA INSULINICO OSPEDALIERO PERSONALIZZATO</h1>
-        <div class="author">Creato dal Dott. Maestri Lorenzo • Linee Guida ADA / SID-AMD / ESPEN</div>
-
-        <div class="header-box">
-          <table style="width: 100%; font-size: 10.5pt;">
-            <tr>
-              <td style="width: 50%;"><strong>Paziente / Letto:</strong> ${patient.bedOrName || 'Non specificato'}</td>
-              <td style="width: 50%;"><strong>Reparto:</strong> ${patient.department || 'Degenza Ordinaria'}</td>
-            </tr>
-            <tr>
-              <td><strong>Età / Sesso:</strong> ${patient.age} anni (${patient.gender})</td>
-              <td><strong>Peso / BMI:</strong> ${patient.weightKg} kg (BMI: ${bmi})</td>
-            </tr>
-            <tr>
-              <td><strong>Funzione Renale:</strong> eGFR ${patient.egfr} mL/min (Creatinina: ${patient.creatinine ?? 'N/D'} mg/dL)</td>
-              <td><strong>Diagnosi / Glicemia Ingresso:</strong> ${patient.diabetesType} (${patient.admissionGlucose} mg/dL)</td>
-            </tr>
-          </table>
-        </div>
+        <!-- DATI PAZIENTE -->
+        <div class="section-title">1. DATI PAZIENTE & PARAMETRI CLINICI</div>
+        <table class="data-table">
+          <tr>
+            <td style="width: 25%; background-color: #f9fafb;"><strong>Paziente / Letto:</strong></td>
+            <td style="width: 25%; font-weight: bold;">${patient.bedOrName || 'Non specificato'}</td>
+            <td style="width: 25%; background-color: #f9fafb;"><strong>Età / Sesso:</strong></td>
+            <td style="width: 25%;">${patient.age} anni (${patient.gender})</td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9fafb;"><strong>Peso / BMI:</strong></td>
+            <td><strong>${patient.weightKg} kg</strong> (BMI: ${bmi})</td>
+            <td style="background-color: #f9fafb;"><strong>Funzione Renale:</strong></td>
+            <td><strong>eGFR ${patient.egfr} mL/min</strong></td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9fafb;"><strong>Diagnosi / Glicemia:</strong></td>
+            <td>${patient.diabetesType} (${patient.admissionGlucose} mg/dL)</td>
+            <td style="background-color: #f9fafb;"><strong>Fattore Sensibilità (ISF):</strong></td>
+            <td><strong>1 U riduce ~${regimen.isf} mg/dL</strong></td>
+          </tr>
+        </table>
 
         ${regimen.nutritionProtocol ? `
-          <div class="protocol-box">
-            <strong>${regimen.nutritionProtocol.title}:</strong><br>
-            • <strong>Regola di Sicurezza:</strong> ${regimen.nutritionProtocol.safetyRule}<br>
-            • <strong>Monitoraggio:</strong> ${regimen.nutritionProtocol.monitoring}
+          <div class="alert-box">
+            <strong>${regimen.nutritionProtocol.title}:</strong> ${regimen.nutritionProtocol.safetyRule} | <em>Monitoraggio: ${regimen.nutritionProtocol.monitoring}</em>
           </div>
         ` : ''}
 
-        <h2>1. SOMMINISTRAZIONI INSULINICHE PROGRAMMATE (PROGRAMMA ORARIO VERTICALE)</h2>
-        <div style="font-size: 10.5pt; margin-bottom: 8px;">
-          <strong>Fabbisogno Totale Giornaliero (TDD):</strong> ${regimen.tdd} Unità/die (Fattore: ${regimen.factorUsed} U/kg/die)
-        </div>
-
-        <table class="grid-table">
+        <!-- SCHEMA FISSO -->
+        <div class="section-title">2. SCHEMA INSULINICO PROGRAMMATO FISSO (TDD: ${regimen.tdd} U/die - ${regimen.factorUsed} U/kg)</div>
+        <table class="data-table">
           <thead>
             <tr>
-              <th style="width: 14%;">Orario</th>
+              <th style="width: 12%; text-align: center;">Orario</th>
               <th style="width: 22%;">Somministrazione</th>
               <th style="width: 14%; text-align: center;">Dose Fissa</th>
-              <th style="width: 24%;">Tipo Insulina / Via</th>
-              <th style="width: 26%;">Istruzioni Reparto</th>
+              <th style="width: 24%;">Tipo Farmaco / Via</th>
+              <th style="width: 28%;">Istruzioni Reparto</th>
             </tr>
           </thead>
           <tbody>
@@ -197,41 +217,45 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
           </tbody>
         </table>
 
-        <h2>2. SCALA MOBILE DI CORREZIONE PRE-PRANDIALE (SLIDING SCALE)</h2>
-        <div style="font-size: 10pt; margin-bottom: 6px;">
-          <strong>Fattore di Sensibilità (ISF):</strong> 1 Unità abbassa la glicemia di <strong>~${regimen.isf} mg/dL</strong> (Target: 100 - 140 mg/dL).
-        </div>
-
-        <table class="grid-table">
+        <!-- SCALA CORREZIONI -->
+        <div class="section-title">3. SCALA DI CORREZIONE PRE-PRANDIALE SU STICK GLICEMICO</div>
+        <table class="data-table">
           <thead>
             <tr>
-              <th style="width: 22%;">Glicemia Capillare</th>
-              <th style="width: 22%; text-align: center;">Dose Correzione</th>
-              <th style="width: 56%;">Istruzioni Infermieristiche & Mediche</th>
+              <th style="width: 25%; text-align: center;">Glicemia Capillare</th>
+              <th style="width: 20%; text-align: center;">Dose Extra Rapida</th>
+              <th style="width: 55%;">Azione Infermieristica / Clinica</th>
             </tr>
           </thead>
           <tbody>
-            ${tableRowsHtml}
+            ${correctionRowsHtml}
           </tbody>
         </table>
 
-        <h2>3. TERAPIE ANTIDIABETICHE DOMICILIARI SOSPESE DURANTE IL RICOVERO</h2>
+        <!-- FARMACI SOSPESI -->
+        <div class="section-title">4. TERAPIE DOMICILIARI SOSPESE IN RICOVERO</div>
         ${suspendedMedsHtml}
 
-        <div class="signature-section">
-          <table style="width: 100%;">
-            <tr>
-              <td style="width: 50%;">
-                Data e Ora: <strong>${currentDateFormatted} - ore ${new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</strong>
-              </td>
-              <td style="width: 50%; text-align: right;">
-                Firma del Medico Prescrittore: _____________________________________
-              </td>
-            </tr>
-          </table>
-          <div style="font-size: 8pt; color: #777777; margin-top: 14px; line-height: 1.3; border-top: 0.5pt solid #cccccc; padding-top: 6px;">
-            <strong>Avvertenza Medico-Legale (Disclaimer):</strong> La presente scheda è generata a scopo di supporto decisionale clinico basato su linee guida (ADA / SID-AMD / ESPEN). Il medico prescrittore rimane l'unico responsabile della validazione clinica, della congruenza dei dosaggi e dell'adattamento al singolo paziente. L'autore (Dott. Maestri Lorenzo) declina ogni responsabilità per esiti clinici avversi o modifiche terapeutiche non supervisionate.
-          </div>
+        <!-- PROTOCOLLO IPOGLICEMIA -->
+        <div class="alert-box">
+          <strong>🚨 GESTIONE IPOGLICEMIA (&lt; 70 mg/dL):</strong> Sospendere bolo rapido. Somministrare immediatamente 15g carboidrati semplici (3 bustine zucchero in acqua o 1 succo). Ricontrollo stick a 15 minuti ("Regola del 15"). Se pz non collaborante/NPO: Glucosata 33% 20-30 mL ev o Glucagone 1 mg im.
+        </div>
+
+        <!-- FIRMA -->
+        <table class="signature-box" style="border: none;">
+          <tr>
+            <td style="border: none; padding: 0; width: 50%; font-size: 9.5pt;">
+              Data Prescrizione: <strong>${currentDateFormatted}</strong>
+            </td>
+            <td style="border: none; padding: 0; width: 50%; text-align: right; font-size: 9.5pt;">
+              Firma Medico Prescrittore: _____________________________
+            </td>
+          </tr>
+        </table>
+
+        <!-- DISCLAIMER -->
+        <div class="disclaimer">
+          <strong>Avvertenza Medico-Legale:</strong> Strumento informatico di supporto decisionale basato su linee guida ADA/SID-AMD/ESPEN. Il medico prescrittore rimane l'unico responsabile della validazione clinica, della congruenza dei dosaggi e dell'adattamento al singolo paziente. L'autore (Dott. Maestri Lorenzo) declina ogni responsabilità per esiti clinici avversi.
         </div>
 
       </body>
@@ -248,7 +272,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
       .replace(/[^a-zA-Z0-9_-]/g, '_')
       .slice(0, 30);
     downloadLink.href = url;
-    downloadLink.download = `Schema_Insulinico_${cleanName}_${currentDateFormatted.replace(/\//g, '-')}.doc`;
+    downloadLink.download = `Prescrizione_Insulina_${cleanName}_${currentDateFormatted.replace(/\//g, '-')}.doc`;
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
@@ -271,7 +295,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
                 Scheda Prescrizione Terapia Ospedaliera
               </h3>
               <p className="text-[11px] text-slate-400">
-                Stampa in PDF, Esporta in Word (.doc) o Copia per Cartella Elettronica
+                Stampa in PDF (tutte le pagine), Esporta in Word (.doc) o Copia per Cartella Elettronica
               </p>
             </div>
           </div>
@@ -284,7 +308,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
               id="btn-export-word"
               onClick={handleExportWord}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all shadow-xs cursor-pointer hover:scale-[1.02]"
-              title="Esporta documento compatibile Microsoft Word (.doc)"
+              title="Esporta documento Word (.doc) semplificato e pulito"
             >
               {wordExported ? <Check className="h-3.5 w-3.5 text-blue-200" /> : <FileDown className="h-3.5 w-3.5" />}
               <span>{wordExported ? 'Scaricato Word!' : 'Scarica Word (.doc)'}</span>
@@ -296,7 +320,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
               id="btn-print-pdf"
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white transition-all shadow-xs cursor-pointer hover:scale-[1.02]"
-              title="Stampa diretta o Salva come PDF"
+              title="Stampa diretta o Salva come PDF (tutte le pagine)"
             >
               <Printer className="h-3.5 w-3.5" />
               <span>Stampa / Salva PDF</span>
@@ -325,7 +349,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
         </div>
 
         {/* Printable Document Area */}
-        <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-slate-900 print:p-0 print:m-0" id="printable-order-sheet">
+        <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-slate-900" id="printable-order-sheet">
           
           {/* Header of the sheet */}
           <div className="border-b-2 border-slate-900 pb-4 flex items-start justify-between">
@@ -352,130 +376,117 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
           </div>
 
           {/* Patient Details Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs page-break-inside-avoid">
             <div>
               <span className="text-slate-500 block">Paziente / Letto:</span>
               <strong className="text-slate-900 text-sm">{patient.bedOrName || 'Non specificato'}</strong>
             </div>
             <div>
-              <span className="text-slate-500 block">Età / Sesso:</span>
-              <strong className="text-slate-900">{patient.age} anni ({patient.gender})</strong>
-            </div>
-            <div>
-              <span className="text-slate-500 block">Peso / BMI:</span>
-              <strong className="text-slate-900">{patient.weightKg} kg (BMI {bmi})</strong>
+              <span className="text-slate-500 block">Dati Antropometrici:</span>
+              <strong className="text-slate-900">{patient.weightKg} kg</strong> (BMI: {bmi}) • {patient.age} anni
             </div>
             <div>
               <span className="text-slate-500 block">Funzione Renale:</span>
-              <strong className="text-slate-900">eGFR {patient.egfr} mL/min {patient.creatinine ? `(Cr: ${patient.creatinine})` : ''}</strong>
+              <strong className="text-slate-900">eGFR {patient.egfr} mL/min</strong>
+              <span className="text-[10px] text-slate-500 block">Creatinina: {patient.creatinine ?? 'N/D'} mg/dL</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block">Diabete & Glicemia Ingresso:</span>
+              <strong className="text-slate-900">{patient.diabetesType}</strong>
+              <span className="text-[10px] text-slate-500 block">Glicemia: {patient.admissionGlucose} mg/dL</span>
             </div>
           </div>
 
-          {/* Special Nutrition Protocol Banner */}
+          {/* Special Nutrition Protocol warning if present */}
           {regimen.nutritionProtocol && (
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-xs text-amber-900 space-y-1">
-              <div className="font-bold text-amber-950 flex items-center gap-1.5">
-                <ShieldAlert className="h-4 w-4 text-amber-600" />
-                {regimen.nutritionProtocol.title}
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-xs text-amber-950 space-y-1 page-break-inside-avoid">
+              <div className="font-bold text-amber-900">
+                PROTOCOLLO NUTRIZIONE SPECIALE: {regimen.nutritionProtocol.title}
               </div>
-              <p className="text-slate-700">
-                <strong>Regola di Sicurezza:</strong> {regimen.nutritionProtocol.safetyRule}
-              </p>
-              <p className="text-slate-600 text-[11px]">
-                <strong>Monitoraggio:</strong> {regimen.nutritionProtocol.monitoring}
-              </p>
+              <div><strong>Regola di Sicurezza:</strong> {regimen.nutritionProtocol.safetyRule}</div>
+              <div><strong>Monitoraggio:</strong> {regimen.nutritionProtocol.monitoring}</div>
             </div>
           )}
 
-          {/* 1. Daily Injections Schedule - Vertical Table */}
-          <div>
-            <div className="flex items-center justify-between border-b border-slate-300 pb-1 mb-2">
+          {/* 1. Scheduled Fixed Doses Table */}
+          <div className="space-y-2 page-break-inside-avoid">
+            <div className="flex items-center justify-between border-b border-slate-300 pb-1">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                1. Somministrazioni Insuliniche Programmate (TDD: {regimen.tdd} U/die - {regimen.factorUsed} U/kg/die)
+                1. Terapia Insulinica Programmata Fissa (Fabbisogno Totale: {regimen.tdd} U/die - {regimen.factorUsed} U/kg):
               </h4>
-              <span className="text-[10px] text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                Sequenza Verticale Giornaliera
+              <span className="text-[11px] text-slate-500">
+                Quota Basale: {regimen.basalDose} U | Quota Bolo Totale: {regimen.totalBolus} U
               </span>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-lg">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-100 font-bold text-slate-700 border-b border-slate-200">
-                  <tr>
-                    <th className="p-2 border-r border-slate-200 w-24">Orario</th>
-                    <th className="p-2 border-r border-slate-200 w-36">Somministrazione</th>
-                    <th className="p-2 border-r border-slate-200 text-center w-24">Dose Fissa</th>
-                    <th className="p-2 border-r border-slate-200">Tipo Farmaco & Via</th>
-                    <th className="p-2">Istruzioni Reparto</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 font-medium">
-                  {regimen.scheduledDoses.map((doseItem, idx) => {
-                    const isBasal = doseItem.label.toLowerCase().includes('basale');
-                    const isInBag = doseItem.route.includes('sacca');
-
-                    return (
-                      <tr
-                        key={idx}
-                        className={
-                          isBasal
-                            ? 'bg-indigo-50/50'
-                            : isInBag
-                            ? 'bg-teal-50/50'
-                            : 'bg-white'
-                        }
-                      >
-                        <td className="p-2 border-r border-slate-200 font-mono font-bold text-slate-900 whitespace-nowrap">
-                          {doseItem.time}
-                        </td>
-                        <td className="p-2 border-r border-slate-200 font-bold text-slate-900">
-                          {doseItem.label}
-                        </td>
-                        <td className="p-2 border-r border-slate-200 text-center font-black font-mono text-base text-teal-700">
-                          {doseItem.dose} U
-                        </td>
-                        <td className="p-2 border-r border-slate-200 text-slate-700">
-                          <span className="font-semibold">{doseItem.drugType}</span>
-                          <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9.5px] font-bold ${
-                            isBasal ? 'bg-indigo-100 text-indigo-800' : isInBag ? 'bg-teal-100 text-teal-900' : 'bg-slate-100 text-slate-800'
-                          }`}>
-                            {doseItem.route}
-                          </span>
-                        </td>
-                        <td className="p-2 text-slate-600 text-[11px] leading-relaxed">
-                          {doseItem.instructions}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* 2. Sliding scale correction table */}
-          <div>
-            <div className="flex items-center justify-between border-b border-slate-300 pb-1 mb-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                2. Scala Mobile di Correzione Pre-Prandiale (ISF: 1 U = -{regimen.isf} mg/dL)
-              </h4>
-              <span className="text-[10px] text-slate-600">Dose extra da somministrare prima dei pasti/boli</span>
-            </div>
-
-            <table className="w-full text-xs text-left border border-slate-200">
-              <thead className="bg-slate-100 font-bold text-slate-700">
+            <table className="w-full text-left text-xs border border-slate-300">
+              <thead className="bg-slate-100 text-slate-700 font-bold border-b">
                 <tr>
-                  <th className="p-2 border">Glicemia Capillare</th>
-                  <th className="p-2 border text-center">Unità Extra di Rapida</th>
-                  <th className="p-2 border">Istruzioni Infermieristiche & Mediche</th>
+                  <th className="p-2 border w-16">Orario</th>
+                  <th className="p-2 border">Somministrazione</th>
+                  <th className="p-2 border text-center w-20">Dose Fissa</th>
+                  <th className="p-2 border">Tipo Farmaco / Via</th>
+                  <th className="p-2 border">Istruzioni Cliniche Reparto</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 font-medium">
+              <tbody>
+                {regimen.scheduledDoses.map((dose, idx) => {
+                  const isBasal = dose.label.toLowerCase().includes('basale');
+                  const isInBag = dose.route.includes('sacca');
+                  return (
+                    <tr
+                      key={idx}
+                      className={
+                        isBasal
+                          ? 'bg-teal-50/70 font-semibold'
+                          : isInBag
+                          ? 'bg-emerald-50/60 font-semibold'
+                          : idx % 2 === 0
+                          ? 'bg-white'
+                          : 'bg-slate-50/50'
+                      }
+                    >
+                      <td className="p-2 font-mono font-bold border">{dose.time}</td>
+                      <td className="p-2 border font-medium text-slate-900">{dose.label}</td>
+                      <td className="p-2 border text-center font-mono font-black text-sm text-teal-800">
+                        {dose.dose} U
+                      </td>
+                      <td className="p-2 border text-slate-700">
+                        <span className="font-medium">{dose.drugType}</span>
+                        <span className="text-[10px] text-slate-500 block">({dose.route})</span>
+                      </td>
+                      <td className="p-2 border text-[11px] text-slate-600">{dose.instructions}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 2. Pre-prandial Correction Scale Table */}
+          <div className="space-y-2 page-break-inside-avoid">
+            <div className="flex items-center justify-between border-b border-slate-300 pb-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                2. Scala Mobile di Correzione Estemporanea su Stick Glicemico (Target: 100-140 mg/dL):
+              </h4>
+              <span className="text-[11px] text-teal-800 font-bold">
+                ISF: 1 U riduce ~{regimen.isf} mg/dL
+              </span>
+            </div>
+
+            <table className="w-full text-left text-xs border border-slate-300">
+              <thead className="bg-slate-100 text-slate-700 font-bold border-b">
+                <tr>
+                  <th className="p-2 border w-36">Glicemia Capillare</th>
+                  <th className="p-2 border text-center w-28">Dose Extra Rapida</th>
+                  <th className="p-2 border">Istruzioni Infermieristiche & Gestione</th>
+                </tr>
+              </thead>
+              <tbody>
                 {correctionScale.map((step, idx) => {
                   const isHypo = step.minGlucose === 0;
                   const isEga = step.minGlucose > 400;
-                  const isVeryHigh = step.minGlucose > 320 && !isEga;
-
+                  const isVeryHigh = step.minGlucose > 320;
                   return (
                     <tr
                       key={idx}
@@ -503,7 +514,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
 
           {/* 3. Suspended Home Medications */}
           {suspendedMeds.length > 0 && (
-            <div>
+            <div className="page-break-inside-avoid">
               <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900 mb-2 border-b border-rose-200 pb-1">
                 3. Terapie Antidiabetiche Domiciliari SOSPESE Durante la Degenza:
               </h4>
@@ -521,7 +532,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
           )}
 
           {/* 4. Monitoring and Hypoglycemia Protocol */}
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1">
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1 page-break-inside-avoid">
             <strong className="text-slate-900 block font-bold">
               4. Monitoraggio Glicemico & Regola del 15 per Ipoglicemie (&lt; 70 mg/dL):
             </strong>
@@ -532,7 +543,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
           </div>
 
           {/* 5. Signature line */}
-          <div className="pt-4 border-t border-slate-300 flex items-center justify-between text-xs text-slate-600">
+          <div className="pt-4 border-t border-slate-300 flex items-center justify-between text-xs text-slate-600 page-break-inside-avoid">
             <div>
               Data Prescrizione: <strong>{currentDateFormatted}</strong>
             </div>
@@ -542,7 +553,7 @@ Firma del Medico Prescrittore: ________________________ (Data: ${currentDateForm
           </div>
 
           {/* 6. Medical Disclaimer */}
-          <div className="text-[10px] text-slate-400 border-t border-slate-200 pt-2 leading-relaxed">
+          <div className="text-[10px] text-slate-400 border-t border-slate-200 pt-2 leading-relaxed page-break-inside-avoid">
             <strong>Avvertenza Medico-Legale:</strong> Strumento di supporto decisionale clinico basato su linee guida. Il medico prescrittore rimane l'unico responsabile della validazione dei dosaggi e dell'adattamento al paziente. L'autore (Dott. Maestri Lorenzo) declina ogni responsabilità per esiti clinici avversi.
           </div>
 
