@@ -739,6 +739,7 @@ export function calculateSpotCorrection(
 
 /**
  * Daily Titration Algorithm (Titration Advisor)
+ * Evaluates 24-hour capillary glucose profile and proposes safe adjustments (ADA/SID-AMD standards).
  */
 export function evaluateDailyTitration(
   regimen: InsulinRegimen,
@@ -749,30 +750,70 @@ export function evaluateDailyTitration(
   const notes: string[] = [];
   let urgency: 'routine' | 'warning' | 'critical' = 'routine';
 
-  // Hypoglycemia check has maximum priority!
-  if (log.hypoEvents > 0 || log.fasting < 70 || log.preLunch < 70 || log.preDinner < 70 || log.bedtime < 70) {
+  // Helper to verify a clinically plausible glucose measurement
+  const isPlausible = (v: number | undefined | null): v is number =>
+    typeof v === 'number' && !isNaN(v) && v >= 40 && v <= 700;
+
+  const validFasting = isPlausible(log.fasting) ? log.fasting : undefined;
+  const validPreLunch = isPlausible(log.preLunch) ? log.preLunch : undefined;
+  const validPreDinner = isPlausible(log.preDinner) ? log.preDinner : undefined;
+  const validBedtime = isPlausible(log.bedtime) ? log.bedtime : undefined;
+  const validNight = isPlausible(log.night3am) ? log.night3am : undefined;
+
+  const hasAnyReading =
+    validFasting !== undefined ||
+    validPreLunch !== undefined ||
+    validPreDinner !== undefined ||
+    validBedtime !== undefined ||
+    validNight !== undefined ||
+    (log.hypoEvents && log.hypoEvents > 0);
+
+  if (!hasAnyReading) {
+    return {
+      basalChange: 0,
+      bolusChanges: { breakfast: 0, lunch: 0, dinner: 0 },
+      overallAdvice: 'Inserisci le glicemie capillari rilevate nelle ultime 24 ore (o seleziona un esempio rapido) per calcolare la titolazione raccomandata.',
+      urgency: 'routine',
+    };
+  }
+
+  // 1. Hypoglycemia check (Priority 1 - Absolute Clinical Safety)
+  const isFastingHypo = validFasting !== undefined && validFasting < 70;
+  const isPreLunchHypo = validPreLunch !== undefined && validPreLunch < 70;
+  const isPreDinnerHypo = validPreDinner !== undefined && validPreDinner < 70;
+  const isBedtimeHypo = validBedtime !== undefined && validBedtime < 70;
+  const isNightHypo = validNight !== undefined && validNight < 70;
+  const hasReportedHypo = (log.hypoEvents ?? 0) > 0;
+
+  if (isFastingHypo || isPreLunchHypo || isPreDinnerHypo || isBedtimeHypo || isNightHypo || hasReportedHypo) {
     urgency = 'warning';
-    if (log.fasting < 70 || (log.night3am && log.night3am < 70)) {
-      const reduction = Math.max(2, Math.round(regimen.basalDose * 0.2));
+
+    // Basal hypoglycemia
+    if (isFastingHypo || isNightHypo) {
+      const reduction = Math.max(2, Math.round((regimen.basalDose || 10) * 0.2));
       basalChange = -reduction;
-      notes.push(`IPOGLICEMIA A DIGIUNO / NOTTURNA: Ridurre subito la Basale di ${reduction} U (-20%).`);
-    } else {
-      const reduction = Math.max(1, Math.round(regimen.basalDose * 0.15));
+      notes.push(`⚠️ IPOGLICEMIA A DIGIUNO/NOTTURNA (${isFastingHypo ? validFasting : validNight} mg/dL): Ridurre la Basale di ${reduction} U (-20%) per prevenire ulteriori eventi notturni.`);
+    } else if (hasReportedHypo && !isPreLunchHypo && !isPreDinnerHypo && !isBedtimeHypo) {
+      const reduction = Math.max(1, Math.round((regimen.basalDose || 10) * 0.15));
       basalChange = -reduction;
-      notes.push(`IPOGLICEMIA DURANTE IL GIORNO: Ridurre la Basale di ${reduction} U e i boli responsabili.`);
+      notes.push(`⚠️ EPISODIO IPOGLICEMICO SEGNALATO: Ridurre la dose Basale di ${reduction} U (-15%) a scopo cautelativo.`);
     }
 
-    if (log.preLunch < 70) {
-      bolusChanges.breakfast = -Math.max(1, Math.round(regimen.breakfastBolus * 0.2));
-      notes.push('Ipoglicemia pre-pranzo: ridotto bolo colazione del 20%.');
+    // Bolus hypoglycemias
+    if (isPreLunchHypo) {
+      const red = Math.max(1, Math.round((regimen.breakfastBolus || 4) * 0.2));
+      bolusChanges.breakfast = -red;
+      notes.push(`Ipoglicemia pre-pranzo (${validPreLunch} mg/dL): bolo Colazione ridotto di -${red} U.`);
     }
-    if (log.preDinner < 70) {
-      bolusChanges.lunch = -Math.max(1, Math.round(regimen.lunchBolus * 0.2));
-      notes.push('Ipoglicemia pre-cena: ridotto bolo pranzo del 20%.');
+    if (isPreDinnerHypo) {
+      const red = Math.max(1, Math.round((regimen.lunchBolus || 4) * 0.2));
+      bolusChanges.lunch = -red;
+      notes.push(`Ipoglicemia pre-cena (${validPreDinner} mg/dL): bolo Pranzo ridotto di -${red} U.`);
     }
-    if (log.bedtime < 70) {
-      bolusChanges.dinner = -Math.max(1, Math.round(regimen.dinnerBolus * 0.2));
-      notes.push('Ipoglicemia prima di coricarsi: ridotto bolo cena del 20%.');
+    if (isBedtimeHypo) {
+      const red = Math.max(1, Math.round((regimen.dinnerBolus || 4) * 0.2));
+      bolusChanges.dinner = -red;
+      notes.push(`Ipoglicemia serale (${validBedtime} mg/dL): bolo Cena ridotto di -${red} U.`);
     }
 
     return {
@@ -783,40 +824,69 @@ export function evaluateDailyTitration(
     };
   }
 
-  // Fasting Hyperglycemia -> Adjust Basal
-  if (log.fasting > 180) {
-    const increase = Math.max(2, Math.round(regimen.basalDose * 0.15));
-    basalChange = +increase;
-    notes.push(`Glicemia a digiuno elevata (${log.fasting} mg/dL): aumentare la Basale di +${increase} U (+15%).`);
-  } else if (log.fasting >= 140 && log.fasting <= 180) {
-    const increase = Math.max(1, Math.round(regimen.basalDose * 0.1));
-    basalChange = +increase;
-    notes.push(`Glicemia a digiuno lievemente sopra target (${log.fasting} mg/dL): considerare +${increase} U di Basale.`);
+  // 2. Fasting / Nocturnal Hyperglycemia -> Titrate Basal
+  if (validFasting !== undefined) {
+    if (validFasting > 180) {
+      const inc = Math.max(2, Math.round((regimen.basalDose || 10) * 0.15));
+      basalChange = +inc;
+      notes.push(`Glicemia a digiuno elevata (${validFasting} mg/dL): aumentare la Basale di +${inc} U (+15%).`);
+    } else if (validFasting >= 140 && validFasting <= 180) {
+      const inc = Math.max(1, Math.round((regimen.basalDose || 10) * 0.1));
+      basalChange = +inc;
+      notes.push(`Glicemia a digiuno sopra target (${validFasting} mg/dL): incrementare la Basale di +${inc} U (+10%).`);
+    } else {
+      notes.push(`Glicemia a digiuno a target (${validFasting} mg/dL): dose Basale confermata.`);
+    }
   }
 
-  // Pre-Lunch Hyperglycemia
-  if (log.preLunch > 180) {
-    const inc = Math.max(1, Math.round(regimen.breakfastBolus * 0.15));
-    bolusChanges.breakfast = +inc;
-    notes.push(`Glicemia pre-pranzo alta (${log.preLunch} mg/dL): aumentare bolo Colazione di +${inc} U.`);
+  // 3. Pre-Lunch Hyperglycemia -> Adjust Breakfast Bolus
+  if (validPreLunch !== undefined) {
+    if (validPreLunch > 180) {
+      const inc = Math.max(1, Math.round((regimen.breakfastBolus || 4) * 0.15));
+      bolusChanges.breakfast = +inc;
+      notes.push(`Glicemia pre-pranzo elevata (${validPreLunch} mg/dL): aumentare bolo Colazione di +${inc} U.`);
+    } else if (validPreLunch >= 140) {
+      const inc = Math.max(1, Math.round((regimen.breakfastBolus || 4) * 0.1));
+      bolusChanges.breakfast = +inc;
+      notes.push(`Glicemia pre-pranzo lievemente sopra target (${validPreLunch} mg/dL): +${inc} U Colazione.`);
+    }
   }
 
-  // Pre-Dinner Hyperglycemia
-  if (log.preDinner > 180) {
-    const inc = Math.max(1, Math.round(regimen.lunchBolus * 0.15));
-    bolusChanges.lunch = +inc;
-    notes.push(`Glicemia pre-cena alta (${log.preDinner} mg/dL): aumentare bolo Pranzo di +${inc} U.`);
+  // 4. Pre-Dinner Hyperglycemia -> Adjust Lunch Bolus
+  if (validPreDinner !== undefined) {
+    if (validPreDinner > 180) {
+      const inc = Math.max(1, Math.round((regimen.lunchBolus || 4) * 0.15));
+      bolusChanges.lunch = +inc;
+      notes.push(`Glicemia pre-cena elevata (${validPreDinner} mg/dL): aumentare bolo Pranzo di +${inc} U.`);
+    } else if (validPreDinner >= 140) {
+      const inc = Math.max(1, Math.round((regimen.lunchBolus || 4) * 0.1));
+      bolusChanges.lunch = +inc;
+      notes.push(`Glicemia pre-cena lievemente sopra target (${validPreDinner} mg/dL): +${inc} U Pranzo.`);
+    }
   }
 
-  // Bedtime Hyperglycemia
-  if (log.bedtime > 180) {
-    const inc = Math.max(1, Math.round(regimen.dinnerBolus * 0.15));
-    bolusChanges.dinner = +inc;
-    notes.push(`Glicemia prima di coricarsi alta (${log.bedtime} mg/dL): aumentare bolo Cena di +${inc} U.`);
+  // 5. Bedtime Hyperglycemia -> Adjust Dinner Bolus
+  if (validBedtime !== undefined) {
+    if (validBedtime > 180) {
+      const inc = Math.max(1, Math.round((regimen.dinnerBolus || 4) * 0.15));
+      bolusChanges.dinner = +inc;
+      notes.push(`Glicemia prima di coricarsi elevata (${validBedtime} mg/dL): aumentare bolo Cena di +${inc} U.`);
+    } else if (validBedtime >= 150) {
+      const inc = Math.max(1, Math.round((regimen.dinnerBolus || 4) * 0.1));
+      bolusChanges.dinner = +inc;
+      notes.push(`Glicemia prima di coricarsi lievemente sopra target (${validBedtime} mg/dL): +${inc} U Cena.`);
+    }
+  }
+
+  // 6. Night 3:00 AM analysis
+  if (validNight !== undefined) {
+    if (validNight > 180 && validFasting && validFasting > 180) {
+      notes.push(`Controllo notturno ore 03:00 elevato (${validNight} mg/dL) coerente con Fenomeno dell'Alba: confermato incremento della Basale.`);
+    }
   }
 
   if (notes.length === 0) {
-    notes.push('Glicemie ben controllate ed entro i range target ospedalieri (100-180 mg/dL). Mantenere lo schema invariato.');
+    notes.push('Tutte le glicemie capillari sono ottimali ed entro i target di degenza (100-180 mg/dL). Mantenere invariato lo schema terapeutico.');
   }
 
   return {
