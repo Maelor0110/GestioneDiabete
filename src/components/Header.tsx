@@ -68,16 +68,16 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden sm:inline">Protocollo</span> Ipoglicemia
             </button>
 
-            {/* Print / Word Export Prescription Sheet */}
+            {/* Word Export & Copy Prescription Sheet */}
             <button
               id="btn-print-sheet"
               type="button"
               onClick={onOpenPrintModal}
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-teal-600 hover:bg-teal-500 text-white border border-teal-500 shadow-xs transition-all cursor-pointer hover:scale-[1.02]"
-              title="Stampa Schema PDF o Scarica Documento Word (.doc)"
+              title="Esporta Documento Word (.doc) su 2 Pagine o Copia per Cartella Elettronica"
             >
-              <Printer className="h-3.5 w-3.5" />
-              <span>Stampa PDF / Word</span>
+              <FileDown className="h-3.5 w-3.5" />
+              <span>Esporta Word / Copia</span>
             </button>
 
             {/* Reset / New Patient if callback provided */}

@@ -152,8 +152,8 @@ export default function App() {
                 onClick={() => setShowPrintModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-teal-900/40 cursor-pointer hover:scale-[1.02]"
               >
-                <Printer className="h-4 w-4" />
-                <span>Stampa / Esporta Prescrizione</span>
+                <FileDown className="h-4 w-4" />
+                <span>Esporta in Word / Copia</span>
               </button>
             </div>
           </div>
@@ -198,8 +198,8 @@ export default function App() {
               onClick={() => setShowPrintModal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer hover:scale-[1.02]"
             >
-              <Printer className="h-4 w-4" />
-              <span>Stampa PDF / Word</span>
+              <FileDown className="h-4 w-4" />
+              <span>Esporta Word / Copia</span>
             </button>
           </div>
         </div>
