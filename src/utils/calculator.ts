@@ -826,3 +826,49 @@ export function evaluateDailyTitration(
     urgency,
   };
 }
+
+/**
+ * Calculates estimated Glomerular Filtration Rate (eGFR) using the official CKD-EPI 2021 formula
+ * (race-free international standard KDIGO/ADA).
+ * @param creatinineMgDl Serum creatinine in mg/dL
+ * @param age Patient age in years
+ * @param gender 'M' or 'F'
+ * @returns eGFR in mL/min/1.73m² (rounded integer)
+ */
+export function calculateCKDEPI(creatinineMgDl: number, age: number, gender: 'M' | 'F'): number {
+  if (!creatinineMgDl || creatinineMgDl <= 0 || !age || age <= 0) return 60;
+  
+  const isFemale = gender === 'F';
+  const kappa = isFemale ? 0.7 : 0.9;
+  const alpha = isFemale ? -0.241 : -0.302;
+  const genderMult = isFemale ? 1.012 : 1.0;
+  
+  const scrOverKappa = creatinineMgDl / kappa;
+  const minPart = Math.pow(Math.min(scrOverKappa, 1), alpha);
+  const maxPart = Math.pow(Math.max(scrOverKappa, 1), -1.200);
+  const agePart = Math.pow(0.9938, age);
+  
+  const egfr = 142 * minPart * maxPart * agePart * genderMult;
+  return Math.max(5, Math.min(140, Math.round(egfr)));
+}
+
+/**
+ * Calculates Cockcroft-Gault Creatinine Clearance (CrCl).
+ * @param creatinineMgDl Serum creatinine in mg/dL
+ * @param age Patient age in years
+ * @param gender 'M' or 'F'
+ * @param weightKg Patient weight in kg
+ * @returns CrCl in mL/min (rounded integer)
+ */
+export function calculateCockcroftGault(
+  creatinineMgDl: number,
+  age: number,
+  gender: 'M' | 'F',
+  weightKg: number
+): number {
+  if (!creatinineMgDl || creatinineMgDl <= 0 || !age || age <= 0 || !weightKg || weightKg <= 0) return 60;
+  const isFemale = gender === 'F';
+  const raw = ((140 - age) * weightKg) / (72 * creatinineMgDl);
+  const crCl = isFemale ? raw * 0.85 : raw;
+  return Math.max(5, Math.min(200, Math.round(crCl)));
+}

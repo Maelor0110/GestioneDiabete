@@ -17,7 +17,11 @@ import {
   Utensils,
   AlertTriangle,
   HeartPulse,
+  Calculator,
+  RotateCcw,
 } from 'lucide-react';
+import { NumericInput } from './NumericInput';
+import { calculateCKDEPI, calculateCockcroftGault } from '../utils/calculator';
 
 interface PatientFormProps {
   patient: PatientProfile;
@@ -28,12 +32,36 @@ interface PatientFormProps {
 export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onCalculate }) => {
   const bmi = patient.heightCm > 0 ? (patient.weightKg / Math.pow(patient.heightCm / 100, 2)).toFixed(1) : 'N/D';
 
+  const calculatedCrCl = patient.creatinine
+    ? calculateCockcroftGault(patient.creatinine, patient.age, patient.gender, patient.weightKg)
+    : undefined;
+
   const handleFieldChange = (field: keyof PatientProfile, value: any) => {
-    onChange({
+    const updated: PatientProfile = {
       ...patient,
       [field]: value,
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    // Auto-calculate eGFR directly when Creatinine, Age, or Gender change
+    if (field === 'creatinine' || field === 'age' || field === 'gender') {
+      const creat = field === 'creatinine' ? value : patient.creatinine;
+      const ageVal = field === 'age' ? value : patient.age;
+      const genderVal = field === 'gender' ? value : patient.gender;
+
+      if (creat && creat > 0 && ageVal > 0) {
+        updated.egfr = calculateCKDEPI(creat, ageVal, genderVal);
+      }
+    }
+
+    onChange(updated);
+  };
+
+  const handleRecalculateEgfr = () => {
+    if (patient.creatinine && patient.creatinine > 0) {
+      const autoEgfr = calculateCKDEPI(patient.creatinine, patient.age, patient.gender);
+      handleFieldChange('egfr', autoEgfr);
+    }
   };
 
   const handleNutritionTypeChange = (type: NutritionType) => {
@@ -142,18 +170,19 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
               <span>Età (Anni)</span>
               {patient.age >= 75 && (
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded">
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                   Anziano / Cautela
                 </span>
               )}
             </label>
-            <input
-              type="number"
-              min="18"
-              max="110"
+            <NumericInput
+              id="input-age"
               value={patient.age}
-              onChange={(e) => handleFieldChange('age', Number(e.target.value) || 18)}
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-slate-50/50"
+              onChange={(val) => handleFieldChange('age', val ?? 18)}
+              min={18}
+              max={110}
+              step={1}
+              unit="anni"
             />
           </div>
 
@@ -165,7 +194,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
               <button
                 type="button"
                 onClick={() => handleFieldChange('gender', 'M')}
-                className={`py-2 text-xs font-semibold rounded-lg border transition-all ${
+                className={`py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                   patient.gender === 'M'
                     ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
                     : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
@@ -176,7 +205,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
               <button
                 type="button"
                 onClick={() => handleFieldChange('gender', 'F')}
-                className={`py-2 text-xs font-semibold rounded-lg border transition-all ${
+                className={`py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                   patient.gender === 'F'
                     ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
                     : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
@@ -188,7 +217,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
           </div>
         </div>
 
-        {/* ROW 2: Peso, Altezza (BMI), eGFR, Creatinina */}
+        {/* ROW 2: Peso, Altezza (BMI), Creatinina, eGFR Calcolato */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50/80 border border-slate-200">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
@@ -198,14 +227,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
               </span>
               <span className="text-[11px] font-bold text-teal-700">{patient.weightKg} kg</span>
             </label>
-            <input
-              type="number"
-              min="30"
-              max="250"
-              step="0.5"
+            <NumericInput
+              id="input-weight"
               value={patient.weightKg}
-              onChange={(e) => handleFieldChange('weightKg', Math.max(30, Number(e.target.value)))}
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 font-medium"
+              onChange={(val) => handleFieldChange('weightKg', Math.max(30, val ?? 70))}
+              min={30}
+              max={250}
+              step={1}
+              allowDecimals={true}
+              unit="kg"
             />
           </div>
 
@@ -214,47 +244,69 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
               <span>Altezza (cm)</span>
               <span className="text-[11px] text-slate-500">BMI: <strong className="text-slate-800">{bmi} kg/m²</strong></span>
             </label>
-            <input
-              type="number"
-              min="120"
-              max="220"
+            <NumericInput
+              id="input-height"
               value={patient.heightCm}
-              onChange={(e) => handleFieldChange('heightCm', Number(e.target.value))}
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              onChange={(val) => handleFieldChange('heightCm', val ?? 170)}
+              min={120}
+              max={220}
+              step={1}
+              unit="cm"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
-              <span>eGFR (mL/min/1.73m²)</span>
-              <span className="text-[11px] font-bold text-teal-700">{patient.egfr}</span>
+              <span className="flex items-center gap-1">
+                <HeartPulse className="h-3.5 w-3.5 text-rose-500" />
+                Creatinina Sierica
+              </span>
+              <span className="text-[10px] text-teal-600 font-semibold">Calcola eGFR</span>
             </label>
-            <input
-              type="number"
-              min="5"
-              max="140"
-              value={patient.egfr}
-              onChange={(e) => handleFieldChange('egfr', Number(e.target.value) || 60)}
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            <NumericInput
+              id="input-creatinine"
+              value={patient.creatinine}
+              onChange={(val) => handleFieldChange('creatinine', val)}
+              min={0.4}
+              max={15.0}
+              step={0.1}
+              allowDecimals={true}
+              unit="mg/dL"
+              placeholder="es. 1.2"
             />
-            <div className="mt-1.5">{getEgfrBadge(patient.egfr)}</div>
+            <p className="text-[10px] text-slate-500 mt-1">Aggiorna eGFR in tempo reale</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Creatinina Sierica (mg/dL)
-            </label>
-            <input
-              type="number"
-              min="0.4"
-              max="15.0"
-              step="0.1"
-              value={patient.creatinine ?? ''}
-              onChange={(e) => handleFieldChange('creatinine', e.target.value ? Number(e.target.value) : undefined)}
-              placeholder="es. 1.2"
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+          <div className="bg-teal-50/40 p-2.5 rounded-xl border border-teal-200/80">
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-teal-950 flex items-center gap-1">
+                <Calculator className="h-3.5 w-3.5 text-teal-600" />
+                <span>eGFR Calcolato</span>
+              </label>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100/80 text-teal-800 border border-teal-200">
+                CKD-EPI 2021
+              </span>
+            </div>
+            
+            <NumericInput
+              id="input-egfr"
+              value={patient.egfr}
+              onChange={(val) => handleFieldChange('egfr', val ?? 60)}
+              min={5}
+              max={140}
+              step={1}
+              unit="mL/min"
             />
-            <p className="text-[10px] text-slate-500 mt-1">Valuta clearance e rischio accumulo</p>
+
+            <div className="mt-1.5 flex flex-col gap-1">
+              <div>{getEgfrBadge(patient.egfr)}</div>
+              {calculatedCrCl !== undefined && (
+                <div className="text-[10px] text-slate-600 flex items-center justify-between">
+                  <span>CrCl Cockcroft-Gault:</span>
+                  <span className="font-bold text-slate-800">{calculatedCrCl} mL/min</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -419,14 +471,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
                 <label className="block text-[11px] font-bold text-teal-950 mb-1">
                   Glucosio/Destrosio nella Sacca NPT (Grammi)
                 </label>
-                <input
-                  type="number"
-                  min="50"
-                  max="600"
-                  step="10"
+                <NumericInput
+                  id="input-tpn-glucose"
                   value={patient.nutrition?.tpnGlucoseGrams || 200}
-                  onChange={(e) => handleNutritionDetailsChange('tpnGlucoseGrams', Number(e.target.value) || 200)}
-                  className="w-full text-xs px-2.5 py-1.5 rounded border border-slate-300 bg-teal-50/30 focus:ring-1 focus:ring-teal-500"
+                  onChange={(val) => handleNutritionDetailsChange('tpnGlucoseGrams', val ?? 200)}
+                  min={50}
+                  max={600}
+                  step={25}
+                  unit="g"
                 />
                 <span className="text-[10px] text-slate-500">Valore tipico sacca NPT: 150 - 300 g</span>
               </div>
@@ -438,7 +490,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
                 <select
                   value={patient.nutrition?.tpnInsulinInBag !== false ? 'in_bag' : 'subcut'}
                   onChange={(e) => handleNutritionDetailsChange('tpnInsulinInBag', e.target.value === 'in_bag')}
-                  className="w-full text-xs px-2.5 py-1.5 rounded border border-slate-300 bg-teal-50/30"
+                  className="w-full text-xs px-2.5 py-2 rounded-xl border border-slate-300 bg-teal-50/30"
                 >
                   <option value="in_bag">Insulina Regolare inserita in Sacca NPT (Consigliato ADA)</option>
                   <option value="subcut">Schema Basale s.c. + Regolare s.c. ogni 6 ore</option>
@@ -450,7 +502,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
                 <label className="block text-[11px] font-bold text-teal-950 mb-1">
                   Dose Insulina Iniziale in Sacca
                 </label>
-                <div className="text-xs font-bold text-teal-800 bg-teal-50 p-1.5 rounded border border-teal-200">
+                <div className="text-xs font-bold text-teal-800 bg-teal-50 p-2 rounded-xl border border-teal-200">
                   {Math.round((patient.nutrition?.tpnGlucoseGrams || 200) * (patient.steroids?.active ? 0.15 : 0.1))} Unità di Actrapid / Humulin R
                   <div className="text-[10px] font-normal text-slate-600 mt-0.5">
                     ({patient.steroids?.active ? '0.15' : '0.10'} U per grammo di destrosio)
@@ -469,7 +521,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
                 <select
                   value={patient.nutrition?.enteralBolusCount || 4}
                   onChange={(e) => handleNutritionDetailsChange('enteralBolusCount', Number(e.target.value))}
-                  className="w-full text-xs px-2.5 py-1.5 rounded border border-slate-300 bg-teal-50/30"
+                  className="w-full text-xs px-2.5 py-2 rounded-xl border border-slate-300 bg-teal-50/30"
                 >
                   <option value={3}>3 Boli / Die (es. ore 08:00, 13:00, 19:00)</option>
                   <option value={4}>4 Boli / Die (es. ore 08:00, 12:00, 16:00, 20:00)</option>
@@ -518,12 +570,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
             </select>
             {patient.insulinExperience === 'basal_bolus' && (
               <div className="mt-2">
-                <input
-                  type="number"
-                  placeholder="Dose Totale Domiciliare (U/die)"
-                  value={patient.homeTDD || ''}
-                  onChange={(e) => handleFieldChange('homeTDD', Number(e.target.value))}
-                  className="w-full text-xs px-2.5 py-1.5 rounded border border-teal-300 bg-teal-50/50"
+                <NumericInput
+                  id="input-home-tdd"
+                  value={patient.homeTDD}
+                  onChange={(val) => handleFieldChange('homeTDD', val)}
+                  min={4}
+                  max={200}
+                  step={2}
+                  unit="U/die"
+                  placeholder="Dose Totale Domiciliare"
                 />
               </div>
             )}
@@ -579,7 +634,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
                 <select
                   value={patient.steroids.drug}
                   onChange={(e) => handleSteroidChange('drug', e.target.value as SteroidDrug)}
-                  className="w-full text-xs px-2.5 py-1.5 rounded border border-amber-300 bg-white"
+                  className="w-full text-xs px-2.5 py-2 rounded-lg border border-amber-300 bg-white"
                 >
                   <option value="desametasone">Desametasone (Decadron/Soldesam)</option>
                   <option value="prednisone">Prednisone (Deltacortene)</option>
@@ -593,15 +648,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
                 <label className="block text-[11px] font-semibold text-amber-900 mb-1">
                   Dose Giornaliera Totale (mg/die)
                 </label>
-                <input
-                  type="number"
-                  min="0.5"
-                  max="1000"
-                  step="0.5"
+                <NumericInput
+                  id="input-steroid-dose"
                   value={patient.steroids.doseMg}
-                  onChange={(e) => handleSteroidChange('doseMg', Number(e.target.value))}
-                  placeholder="es. 8 mg Desametasone o 25 Prednisone"
-                  className="w-full text-xs px-2.5 py-1.5 rounded border border-amber-300 bg-white"
+                  onChange={(val) => handleSteroidChange('doseMg', val ?? 4)}
+                  min={0.5}
+                  max={1000}
+                  step={0.5}
+                  allowDecimals={true}
+                  unit="mg"
                 />
               </div>
 
@@ -612,7 +667,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
                 <select
                   value={patient.steroids.frequency}
                   onChange={(e) => handleSteroidChange('frequency', e.target.value)}
-                  className="w-full text-xs px-2.5 py-1.5 rounded border border-amber-300 bg-white"
+                  className="w-full text-xs px-2.5 py-2 rounded-lg border border-amber-300 bg-white"
                 >
                   <option value="mattina">Singola dose al mattino (Ore 08:00)</option>
                   <option value="frazionata">Dosi frazionate (Mattina + Sera)</option>
@@ -630,13 +685,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
               <span>Glicemia all'Ingresso / Media Recente (mg/dL)</span>
               <span className="text-[11px] font-bold text-teal-700">{patient.admissionGlucose} mg/dL</span>
             </label>
-            <input
-              type="number"
-              min="50"
-              max="800"
+            <NumericInput
+              id="input-admission-glucose"
               value={patient.admissionGlucose}
-              onChange={(e) => handleFieldChange('admissionGlucose', Number(e.target.value))}
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-slate-50/50"
+              onChange={(val) => handleFieldChange('admissionGlucose', val ?? 180)}
+              min={50}
+              max={800}
+              step={10}
+              unit="mg/dL"
             />
           </div>
 
@@ -644,15 +700,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ patient, onChange, onC
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               HbA1c Recente (% se disponibile)
             </label>
-            <input
-              type="number"
-              min="4.0"
-              max="18.0"
-              step="0.1"
-              value={patient.hba1c ?? ''}
-              onChange={(e) => handleFieldChange('hba1c', e.target.value ? Number(e.target.value) : undefined)}
+            <NumericInput
+              id="input-hba1c"
+              value={patient.hba1c}
+              onChange={(val) => handleFieldChange('hba1c', val)}
+              min={4.0}
+              max={18.0}
+              step={0.1}
+              allowDecimals={true}
+              unit="%"
               placeholder="es. 8.5"
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-slate-50/50"
             />
           </div>
         </div>

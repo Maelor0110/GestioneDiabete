@@ -37,7 +37,7 @@ const DEFAULT_PATIENT: PatientProfile = {
   diabetesType: 'T2D',
   insulinExperience: 'naive',
   homeTDD: 0,
-  egfr: 52,
+  egfr: 57,
   creatinine: 1.35,
   clinicalSetting: 'standard',
   nutrition: {
@@ -80,7 +80,7 @@ export default function App() {
       age: 65,
       weightKg: 75,
       heightCm: 170,
-      egfr: 65,
+      egfr: 73,
       creatinine: 1.1,
       admissionGlucose: 220,
       hba1c: 8.0,

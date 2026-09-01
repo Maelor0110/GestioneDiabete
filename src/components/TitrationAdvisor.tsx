@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { InsulinRegimen, DailyGlucoseLog, PatientProfile } from '../types';
 import { evaluateDailyTitration } from '../utils/calculator';
-import { RefreshCw, TrendingUp, AlertTriangle, CheckCircle2, Moon, Sun, Sunrise, Sunset, ShieldAlert } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CheckCircle2, Moon, Sun, Sunrise, Sunset, ShieldAlert } from 'lucide-react';
+import { NumericInput } from './NumericInput';
 
 interface TitrationAdvisorProps {
   regimen: InsulinRegimen;
@@ -68,92 +69,102 @@ export const TitrationAdvisor: React.FC<TitrationAdvisorProps> = ({ regimen, pat
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           
           {/* Digiuno (Mattino) */}
-          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
               <Sunrise className="h-3.5 w-3.5 text-amber-500" />
               Digiuno (07:30)
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={log.fasting || ''}
-                onChange={(e) => handleLogChange('fasting', Number(e.target.value))}
-                placeholder="mg/dL"
-                className="w-full text-sm font-bold font-mono px-2.5 py-1.5 rounded border border-slate-300 bg-white"
-              />
-            </div>
+            <NumericInput
+              id="titration-fasting"
+              value={log.fasting}
+              onChange={(val) => handleLogChange('fasting', val)}
+              min={40}
+              max={600}
+              step={5}
+              unit="mg/dL"
+              placeholder="140"
+              size="sm"
+            />
             <div className="text-[10px] text-slate-500 mt-1">Regola la Basale</div>
           </div>
 
           {/* Pre-Pranzo */}
-          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
               <Sun className="h-3.5 w-3.5 text-amber-600" />
               Pre-Pranzo (12:00)
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={log.preLunch || ''}
-                onChange={(e) => handleLogChange('preLunch', Number(e.target.value))}
-                placeholder="mg/dL"
-                className="w-full text-sm font-bold font-mono px-2.5 py-1.5 rounded border border-slate-300 bg-white"
-              />
-            </div>
+            <NumericInput
+              id="titration-preLunch"
+              value={log.preLunch}
+              onChange={(val) => handleLogChange('preLunch', val)}
+              min={40}
+              max={600}
+              step={5}
+              unit="mg/dL"
+              placeholder="140"
+              size="sm"
+            />
             <div className="text-[10px] text-slate-500 mt-1">Riflette Colazione</div>
           </div>
 
           {/* Pre-Cena */}
-          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
               <Sunset className="h-3.5 w-3.5 text-orange-500" />
               Pre-Cena (19:00)
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={log.preDinner || ''}
-                onChange={(e) => handleLogChange('preDinner', Number(e.target.value))}
-                placeholder="mg/dL"
-                className="w-full text-sm font-bold font-mono px-2.5 py-1.5 rounded border border-slate-300 bg-white"
-              />
-            </div>
+            <NumericInput
+              id="titration-preDinner"
+              value={log.preDinner}
+              onChange={(val) => handleLogChange('preDinner', val)}
+              min={40}
+              max={600}
+              step={5}
+              unit="mg/dL"
+              placeholder="140"
+              size="sm"
+            />
             <div className="text-[10px] text-slate-500 mt-1">Riflette Pranzo</div>
           </div>
 
           {/* Coricarsi (Bedtime) */}
-          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
               <Moon className="h-3.5 w-3.5 text-indigo-500" />
               Coricarsi (22:30)
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={log.bedtime || ''}
-                onChange={(e) => handleLogChange('bedtime', Number(e.target.value))}
-                placeholder="mg/dL"
-                className="w-full text-sm font-bold font-mono px-2.5 py-1.5 rounded border border-slate-300 bg-white"
-              />
-            </div>
+            <NumericInput
+              id="titration-bedtime"
+              value={log.bedtime}
+              onChange={(val) => handleLogChange('bedtime', val)}
+              min={40}
+              max={600}
+              step={5}
+              unit="mg/dL"
+              placeholder="160"
+              size="sm"
+            />
             <div className="text-[10px] text-slate-500 mt-1">Riflette Cena</div>
           </div>
 
           {/* Notte 03:00 (Opzionale) */}
-          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
             <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
               <Moon className="h-3.5 w-3.5 text-slate-600" />
               Notte (03:00)
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={log.night3am ?? ''}
-                onChange={(e) => handleLogChange('night3am', e.target.value ? Number(e.target.value) : undefined)}
-                placeholder="Opzionale"
-                className="w-full text-sm font-bold font-mono px-2.5 py-1.5 rounded border border-slate-300 bg-white"
-              />
-            </div>
+            <NumericInput
+              id="titration-night3am"
+              value={log.night3am}
+              onChange={(val) => handleLogChange('night3am', val)}
+              min={40}
+              max={600}
+              step={5}
+              unit="mg/dL"
+              placeholder="Opzionale"
+              size="sm"
+            />
             <div className="text-[10px] text-slate-500 mt-1">Rileva Somogyi / Ipoglicemia</div>
           </div>
 
